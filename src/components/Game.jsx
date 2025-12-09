@@ -3,19 +3,18 @@ import Board from './Board';
 import WinModal from './WinModal';
 import LoseModal from './LoseModal';
 import DrawModal from './DrawModal';
-import { checkWinner, checkDraw, getComputerMove, generatePromoCode } from '../utils/gameLogic';
 
-const PLAYER = 'X';
-const COMPUTER = 'O';
-const BLOCK_DURATION = 10 * 60 * 1000; // 10 минут в миллисекундах
+const BLOCK_DURATION = 10 * 60 * 1000; // 10 минут
 const MAX_DRAW_ATTEMPTS = 3;
 
 const Game = () => {
+  const [gameToken, setGameToken] = useState(null);
   const [board, setBoard] = useState(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
-  const [gameStatus, setGameStatus] = useState('playing'); // playing, playerWin, computerWin, draw
+  const [gameStatus, setGameStatus] = useState('playing');
   const [winningLine, setWinningLine] = useState(null);
   const [promoCode, setPromoCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [drawAttempts, setDrawAttempts] = useState(() => {
     const saved = localStorage.getItem('drawAttempts');
     return saved ? parseInt(saved, 10) : 0;
@@ -26,6 +25,31 @@ const Game = () => {
   });
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // Запустить новую игру
+  const startGame = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/game/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+
+      if (data.gameToken) {
+        setGameToken(data.gameToken);
+        setBoard(data.board);
+        setGameStatus(data.status);
+        setIsPlayerTurn(data.isPlayerTurn);
+        setWinningLine(null);
+        setPromoCode('');
+      }
+    } catch (error) {
+      console.error('Failed to start game:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Проверка блокировки при загрузке
   useEffect(() => {
     if (blockEndTime) {
@@ -34,62 +58,86 @@ const Game = () => {
         setIsBlocked(true);
         setGameStatus('draw');
       } else {
-        // Блокировка истекла
         localStorage.removeItem('blockEndTime');
         localStorage.removeItem('drawAttempts');
         setBlockEndTime(null);
         setDrawAttempts(0);
+        startGame();
       }
+    } else {
+      startGame();
     }
-  }, [blockEndTime]);
+  }, []);
 
-  // Отправка сообщения в Telegram
-  const sendToTelegram = async (message) => {
+  // Ход игрока
+  const handleCellClick = async (index) => {
+    if (
+      !gameToken ||
+      board[index] !== null ||
+      !isPlayerTurn ||
+      gameStatus !== 'playing' ||
+      isBlocked ||
+      isLoading
+    ) {
+      return;
+    }
+
     try {
-      await fetch('/api/telegram', {
+      setIsLoading(true);
+      setIsPlayerTurn(false);
+
+      // Оптимистичное обновление UI
+      const optimisticBoard = [...board];
+      optimisticBoard[index] = 'X';
+      setBoard(optimisticBoard);
+
+      const response = await fetch('/api/game/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ gameToken, cellIndex: index }),
       });
+
+      const data = await response.json();
+
+      if (data.error) {
+        console.error('Move error:', data.error);
+        setBoard(board); // Откат
+        setIsPlayerTurn(true);
+        return;
+      }
+
+      // Обновить состояние из ответа сервера
+      setGameToken(data.gameToken);
+      setBoard(data.board);
+      setWinningLine(data.winningLine);
+
+      if (data.status === 'playerWin') {
+        setGameStatus('playerWin');
+        setPromoCode(data.promoCode);
+        localStorage.removeItem('drawAttempts');
+        setDrawAttempts(0);
+      } else if (data.status === 'computerWin') {
+        setGameStatus('computerWin');
+      } else if (data.status === 'draw') {
+        handleDrawResult(data.drawAttempts);
+      } else {
+        setIsPlayerTurn(true);
+      }
     } catch (error) {
-      console.error('Failed to send to Telegram:', error);
+      console.error('Failed to make move:', error);
+      setBoard(board); // Откат
+      setIsPlayerTurn(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Ход компьютера
-  useEffect(() => {
-    if (!isPlayerTurn && gameStatus === 'playing') {
-      const timer = setTimeout(() => {
-        const computerMove = getComputerMove(board, COMPUTER);
-        if (computerMove !== null) {
-          const newBoard = [...board];
-          newBoard[computerMove] = COMPUTER;
-          setBoard(newBoard);
-
-          const result = checkWinner(newBoard);
-          if (result) {
-            setWinningLine(result.line);
-            setGameStatus('computerWin');
-            sendToTelegram('Проигрыш');
-          } else if (checkDraw(newBoard)) {
-            handleDraw();
-          } else {
-            setIsPlayerTurn(true);
-          }
-        }
-      }, 700); // Небольшая задержка для реалистичности
-
-      return () => clearTimeout(timer);
-    }
-  }, [isPlayerTurn, gameStatus, board]);
-
   // Обработка ничьей
-  const handleDraw = () => {
-    const newAttempts = drawAttempts + 1;
-    setDrawAttempts(newAttempts);
-    localStorage.setItem('drawAttempts', newAttempts.toString());
+  const handleDrawResult = (serverDrawAttempts) => {
+    setDrawAttempts(serverDrawAttempts);
+    localStorage.setItem('drawAttempts', serverDrawAttempts.toString());
 
-    if (newAttempts >= MAX_DRAW_ATTEMPTS) {
+    if (serverDrawAttempts >= MAX_DRAW_ATTEMPTS) {
       const endTime = Date.now() + BLOCK_DURATION;
       setBlockEndTime(endTime);
       localStorage.setItem('blockEndTime', endTime.toString());
@@ -99,40 +147,8 @@ const Game = () => {
     setGameStatus('draw');
   };
 
-  // Ход игрока
-  const handleCellClick = (index) => {
-    if (
-      board[index] !== null ||
-      !isPlayerTurn ||
-      gameStatus !== 'playing' ||
-      isBlocked
-    ) {
-      return;
-    }
-
-    const newBoard = [...board];
-    newBoard[index] = PLAYER;
-    setBoard(newBoard);
-
-    const result = checkWinner(newBoard);
-    if (result) {
-      setWinningLine(result.line);
-      const code = generatePromoCode();
-      setPromoCode(code);
-      setGameStatus('playerWin');
-      sendToTelegram(`Победа! Промокод выдан: ${code}`);
-      // Сбросить попытки ничьей при победе
-      localStorage.removeItem('drawAttempts');
-      setDrawAttempts(0);
-    } else if (checkDraw(newBoard)) {
-      handleDraw();
-    } else {
-      setIsPlayerTurn(false);
-    }
-  };
-
   // Начать заново
-  const resetGame = useCallback(() => {
+  const resetGame = useCallback(async () => {
     // Проверить, не истекла ли блокировка
     if (blockEndTime && Date.now() >= blockEndTime) {
       localStorage.removeItem('blockEndTime');
@@ -143,14 +159,10 @@ const Game = () => {
     }
 
     if (!isBlocked || (blockEndTime && Date.now() >= blockEndTime)) {
-      setBoard(Array(9).fill(null));
-      setIsPlayerTurn(true);
-      setGameStatus('playing');
-      setWinningLine(null);
-      setPromoCode('');
       setIsBlocked(false);
+      await startGame();
     }
-  }, [isBlocked, blockEndTime]);
+  }, [isBlocked, blockEndTime, startGame]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -187,9 +199,11 @@ const Game = () => {
       {/* Статус хода */}
       <div className="mb-4 sm:mb-6 px-4 py-2 bg-white/70 rounded-full shadow-md">
         <p className="text-sm font-medium text-gray-600">
-          {gameStatus === 'playing' && (
+          {isLoading ? (
+            '🤔 Компьютер думает...'
+          ) : gameStatus === 'playing' ? (
             isPlayerTurn ? '💕 Ваш ход!' : '🤔 Компьютер думает...'
-          )}
+          ) : null}
         </p>
       </div>
 
@@ -199,7 +213,7 @@ const Game = () => {
           board={board}
           onCellClick={handleCellClick}
           winningLine={winningLine}
-          disabled={!isPlayerTurn || gameStatus !== 'playing' || isBlocked}
+          disabled={!isPlayerTurn || gameStatus !== 'playing' || isBlocked || isLoading}
         />
       </div>
 
@@ -207,7 +221,8 @@ const Game = () => {
       {gameStatus === 'playing' && !isBlocked && (
         <button
           onClick={resetGame}
-          className="mt-6 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+          disabled={isLoading}
+          className="mt-6 text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
         >
           Начать заново
         </button>
