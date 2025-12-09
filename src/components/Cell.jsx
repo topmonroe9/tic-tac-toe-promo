@@ -3,24 +3,26 @@ import { memo } from 'react';
 const Cell = memo(function Cell({ value, onClick, isWinning, disabled }) {
   const renderSymbol = () => {
     if (value === 'X') {
-      // Сердечко для игрока
+      // Сердечко для игрока - с анимацией появления и свечением
       return (
         <svg
           viewBox="0 0 24 24"
-          className="w-12 h-12 sm:w-16 sm:h-16 text-pink-400 drop-shadow-md animate-pulse-soft"
+          className="w-12 h-12 sm:w-16 sm:h-16 text-pink-400 animate-bounce-in"
           fill="currentColor"
+          style={{ filter: 'drop-shadow(0 0 8px rgba(244, 114, 182, 0.6))' }}
         >
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
         </svg>
       );
     }
     if (value === 'O') {
-      // Цветочек для компьютера
+      // Цветочек для компьютера - с анимацией появления и свечением
       return (
         <svg
           viewBox="0 0 24 24"
-          className="w-12 h-12 sm:w-16 sm:h-16 text-lavender-400 drop-shadow-md"
+          className="w-12 h-12 sm:w-16 sm:h-16 text-lavender-400 animate-bounce-in"
           fill="currentColor"
+          style={{ filter: 'drop-shadow(0 0 8px rgba(167, 139, 250, 0.6))' }}
         >
           <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2Z" />
           <path d="M20 12C20 13.1 19.1 14 18 14C16.9 14 16 13.1 16 12C16 10.9 16.9 10 18 10C19.1 10 20 10.9 20 12Z" />
@@ -47,10 +49,11 @@ const Cell = memo(function Cell({ value, onClick, isWinning, disabled }) {
         rounded-2xl shadow-lg
         flex items-center justify-center
         transition-all duration-300
-        hover:bg-white hover:shadow-xl hover:scale-105
-        disabled:cursor-not-allowed disabled:hover:scale-100
-        ${isWinning ? 'ring-4 ring-pink-300 bg-pink-50' : ''}
-        ${!value && !disabled ? 'hover:bg-pink-50' : ''}
+        hover:shadow-xl hover:scale-105
+        active:scale-95
+        disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100
+        ${isWinning ? 'animate-winning-glow bg-pink-50' : ''}
+        ${!value && !disabled ? 'hover:bg-pink-50 hover:shadow-[0_0_20px_rgba(244,114,182,0.3)]' : ''}
       `}
     >
       {renderSymbol()}

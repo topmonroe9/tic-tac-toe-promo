@@ -3,6 +3,57 @@ import Board from './Board';
 import WinModal from './WinModal';
 import LoseModal from './LoseModal';
 import DrawModal from './DrawModal';
+import { useSound } from '../hooks/useSound';
+
+// Плавающие декоративные элементы
+const FloatingShapes = () => (
+  <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    {/* Сердечки */}
+    <div className="absolute top-[10%] left-[5%] text-pink-300/40 text-4xl animate-float-slow" style={{ animationDelay: '0s' }}>
+      <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+    </div>
+    <div className="absolute top-[25%] right-[8%] text-pink-300/30 text-3xl animate-float-slow" style={{ animationDelay: '1s' }}>
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+    </div>
+    <div className="absolute bottom-[15%] left-[12%] text-pink-300/35 text-2xl animate-float-slow" style={{ animationDelay: '2s' }}>
+      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+    </div>
+    {/* Цветочки */}
+    <div className="absolute top-[40%] right-[5%] text-lavender-300/30 text-3xl animate-float-slow" style={{ animationDelay: '0.5s' }}>
+      <svg viewBox="0 0 24 24" className="w-7 h-7" fill="currentColor">
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="12" cy="5" r="2.5" />
+        <circle cx="12" cy="19" r="2.5" />
+        <circle cx="5" cy="12" r="2.5" />
+        <circle cx="19" cy="12" r="2.5" />
+      </svg>
+    </div>
+    <div className="absolute bottom-[30%] right-[15%] text-lavender-300/25 text-2xl animate-float-slow" style={{ animationDelay: '1.5s' }}>
+      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="12" cy="5" r="2.5" />
+        <circle cx="12" cy="19" r="2.5" />
+        <circle cx="5" cy="12" r="2.5" />
+        <circle cx="19" cy="12" r="2.5" />
+      </svg>
+    </div>
+    <div className="absolute top-[60%] left-[8%] text-mint-300/30 text-3xl animate-float-slow" style={{ animationDelay: '2.5s' }}>
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="12" cy="5" r="2.5" />
+        <circle cx="12" cy="19" r="2.5" />
+        <circle cx="5" cy="12" r="2.5" />
+        <circle cx="19" cy="12" r="2.5" />
+      </svg>
+    </div>
+  </div>
+);
 
 const BLOCK_DURATION = 10 * 60 * 1000; // 10 минут
 const MAX_DRAW_ATTEMPTS = 3;
@@ -24,6 +75,9 @@ const Game = () => {
     return saved ? parseInt(saved, 10) : null;
   });
   const [isBlocked, setIsBlocked] = useState(false);
+
+  // Звуки
+  const sound = useSound();
 
   // Запустить новую игру
   const startGame = useCallback(async () => {
@@ -85,6 +139,9 @@ const Game = () => {
     try {
       setIsLoading(true);
       setIsPlayerTurn(false);
+
+      // Звук клика
+      sound.click();
 
       // Оптимистичное обновление UI
       const optimisticBoard = [...board];
@@ -165,9 +222,12 @@ const Game = () => {
   }, [isBlocked, blockEndTime, startGame]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 relative">
+      {/* Плавающие декоративные элементы */}
+      <FloatingShapes />
+
       {/* Заголовок */}
-      <div className="text-center mb-6 sm:mb-8">
+      <div className="text-center mb-6 sm:mb-8 relative z-10">
         <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-400 via-lavender-400 to-mint-400 bg-clip-text text-transparent mb-2">
           Крестики-Нолики
         </h1>
@@ -177,9 +237,9 @@ const Game = () => {
       </div>
 
       {/* Легенда */}
-      <div className="flex gap-6 mb-4 sm:mb-6">
+      <div className="flex gap-6 mb-4 sm:mb-6 relative z-10">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 text-pink-400">
+          <div className="w-6 h-6 text-pink-400" style={{ filter: 'drop-shadow(0 0 4px rgba(244, 114, 182, 0.5))' }}>
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
@@ -187,7 +247,7 @@ const Game = () => {
           <span className="text-sm text-gray-600">Вы</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 text-lavender-400">
+          <div className="w-6 h-6 text-lavender-400" style={{ filter: 'drop-shadow(0 0 4px rgba(167, 139, 250, 0.5))' }}>
             <svg viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="12" r="8" />
             </svg>
@@ -196,11 +256,16 @@ const Game = () => {
         </div>
       </div>
 
-      {/* Статус хода */}
-      <div className="mb-4 sm:mb-6 px-4 py-2 bg-white/70 rounded-full shadow-md">
-        <p className="text-sm font-medium text-gray-600">
+      {/* Статус хода - с пульсацией */}
+      <div className={`mb-4 sm:mb-6 px-5 py-2.5 glass rounded-full shadow-lg relative z-10 ${
+        isPlayerTurn && gameStatus === 'playing' && !isLoading ? 'animate-turn-pulse' : ''
+      }`}>
+        <p className="text-sm font-medium text-gray-700">
           {isLoading ? (
-            '🤔 Компьютер думает...'
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-4 h-4 border-2 border-lavender-400 border-t-transparent rounded-full animate-spin" />
+              Компьютер думает...
+            </span>
           ) : gameStatus === 'playing' ? (
             isPlayerTurn ? '💕 Ваш ход!' : '🤔 Компьютер думает...'
           ) : null}
@@ -208,7 +273,7 @@ const Game = () => {
       </div>
 
       {/* Игровое поле */}
-      <div className="w-full max-w-xs sm:max-w-sm">
+      <div className="w-full max-w-xs sm:max-w-sm relative z-10">
         <Board
           board={board}
           onCellClick={handleCellClick}

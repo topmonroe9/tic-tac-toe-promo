@@ -3,7 +3,9 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(TOKEN=\"eyJib2FyZCI6WyJYIixudWxsLG51bGwsbnVsbCxudWxsLG51bGwsbnVsbCwiTyIsbnVsbF0sImlzUGxheWVyVHVybiI6dHJ1ZSwic3RhdHVzIjoicGxheWluZyIsImRyYXdBdHRlbXB0cyI6MCwiY3JlYXRlZEF0IjoxNzY1MjcxMjU5MDIwfQ==.ZIQMd7yl3ZHckeIf4lSjh2Z3snzS623PUrzzr8Qjq9k=\")",
+      "Bash(curl:*)"
     ]
   }
 }
